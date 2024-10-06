@@ -8,8 +8,3 @@ HoneySnare is a smart contract honeypot designed to attract malicious bot intera
 - Automated compression of logs for efficient storage
 - Suitable for testing vulnerabilities and tracking bot activity
 
-## Project Structure
-honeysnare/
-├── contracts/                # Foundry-based Solidity project
-├── rust-backend/             # Rust event listener and logger
-└── README.md                 # Project documentation
