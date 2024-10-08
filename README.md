@@ -8,3 +8,8 @@
 - **Automated Log Compression**: Logs are compressed and archived automatically for efficient storage and easy retrieval.
 - **Cross-Network Support**: Designed to work on Ethereum, Arbitrum, Optimism, Base, and other EVM-compatible networks.
 - **Bot Interaction Analysis**: Collects and archives interaction data for testing vulnerabilities, analyzing attack vectors, and tracking malicious bot activity.
+
+
+# TODO
+- Deploy Honeypot.sol to Polygon.
+- Update the backend crate's main.rs to use hardcoded deployed honeypot address.
