@@ -1,0 +1,36 @@
+name: Check Honeypot and Process Logs
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Runs every 15 minutes
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  check-honeypot:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    
+    - name: Build
+      run: |
+        cd backend
+        cargo build --release
+      
+    - name: Run backend
+      env:
+        ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+      run: |
+        cd backend
+        ./target/release/backend
+    
+    - name: Commit and push if changes
+      run: |
+        git config --global user.name 'GitHub Action'
+        git config --global user.email 'action@github.com'
+        git add backend/logs/
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update logs" && git push)

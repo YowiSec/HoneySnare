@@ -1,8 +1,8 @@
 [build]
-  command = "cargo build --release"
-  functions = "functions"
+  command = ""  # No build command needed
+  publish = "backend/logs"  # Publish the logs directory from the backend crate
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/*"
+  to = "/index.html"
   status = 200
