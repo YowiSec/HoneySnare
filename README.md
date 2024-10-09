@@ -11,5 +11,6 @@
 
 
 # TODO
-- Deploy Honeypot.sol to Polygon.
-- Update the backend crate's main.rs to use hardcoded deployed honeypot address.
+- [X] Deploy Honeypot.sol to Arbitrum.
+- [X] Update the backend crate's main.rs to use hardcoded deployed honeypot address.
+- [ ] Deploy the backend to fleek.
