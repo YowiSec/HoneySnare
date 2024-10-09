@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let eth_node = env::var("ARB_RPC_URL").expect("ARB_RPC_URL not set");
     println!("Connecting to Arbitrum node: {}", eth_node);
 
-    let honeypot_address = match hex::decode("0x6d22de3D3C70F67C323F15975De19b53b7a73Dac") {
+    let honeypot_address = match hex::decode("6d22de3D3C70F67C323F15975De19b53b7a73Dac") {
         Ok(bytes) => {
             if bytes.len() != 20 {
                 println!("Invalid Arbitrum address length: {}", bytes.len());
