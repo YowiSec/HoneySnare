@@ -126,7 +126,7 @@ async fn get_logs(eth_node: &str, honeypot_address: &Address) -> Result<Vec<Valu
     let client = Client::new();
 
     // Get the latest block number
-    let latest_block: u64 = client
+    let block_number_response = client
         .post(eth_node)
         .json(&serde_json::json!({
             "jsonrpc": "2.0",
@@ -137,19 +137,31 @@ async fn get_logs(eth_node: &str, honeypot_address: &Address) -> Result<Vec<Valu
         .send()
         .await?
         .json::<serde_json::Value>()
-        .await?
-        ["result"]
-        .as_str()
-        .unwrap()
-        .trim_start_matches("0x")
-        .parse()?;
+        .await?;
+
+    println!("Block number response: {:?}", block_number_response);
+
+    let latest_block: u64 = match block_number_response.get("result") {
+        Some(Value::String(hex_string)) => {
+            println!("Parsing block number: {}", hex_string);
+            u64::from_str_radix(hex_string.trim_start_matches("0x"), 16)
+                .map_err(|e| format!("Failed to parse block number: {}", e))?
+        },
+        _ => return Err("Unexpected response format for block number".into()),
+    };
+
+    println!("Latest block: {}", latest_block);
 
     // Read the last processed block
     let from_block = if let Ok(contents) = fs::read_to_string(LAST_PROCESSED_BLOCK_FILE) {
-        serde_json::from_str::<u64>(&contents).unwrap_or(latest_block.saturating_sub(BLOCKS_TO_QUERY))
+        println!("Last processed block file contents: {}", contents);
+        contents.trim().parse::<u64>()
+            .unwrap_or_else(|_| latest_block.saturating_sub(BLOCKS_TO_QUERY))
     } else {
         latest_block.saturating_sub(BLOCKS_TO_QUERY)
     };
+
+    println!("Querying from block: {}", from_block);
 
     let payload = serde_json::json!({
         "jsonrpc": "2.0",
