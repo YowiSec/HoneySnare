@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HoneySnare Logs</title>
+</head>
+<body>
+    <h1>HoneySnare Logs</h1>
+    <pre id="logs"></pre>
+    <script>
+        fetch('current.json')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('logs').textContent = data;
+            });
+    </script>
+</body>
+</html>

@@ -9,7 +9,6 @@ use std::path::Path;
 use flate2::write::GzEncoder;
 use flate2::Compression;
 use std::io::{Write, Read};
-use tokio::time::{sleep, Duration};
 use hex;
 use serde_json::Value;
 use log::{info, warn, error, debug};
@@ -55,74 +54,71 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut log_count = 0;
 
-    loop {
-        println!("Fetching logs...");
-        match get_logs(&eth_node, &honeypot_address).await {
-            Ok(logs) => {
-                if logs.is_empty() {
-                    println!("No new logs found");
-                } else {
-                    println!("Found {} new log(s)", logs.len());
-                    for log in logs {
-                        println!("Processing log: {:?}", log);
-                        let topics: Vec<[u8; 32]> = log.get("topics")
-                            .and_then(|t| t.as_array())
-                            .map(|arr| arr.iter()
-                                .filter_map(|v| v.as_str())
-                                .filter_map(|s| hex::decode(s.trim_start_matches("0x")).ok())
-                                .filter_map(|bytes| bytes.try_into().ok())
-                                .collect())
-                            .unwrap_or_default();
+    println!("Fetching logs...");
+    match get_logs(&eth_node, &honeypot_address).await {
+        Ok(logs) => {
+            if logs.is_empty() {
+                println!("No new logs found");
+            } else {
+                println!("Found {} new log(s)", logs.len());
+                for log in logs {
+                    println!("Processing log: {:?}", log);
+                    let topics: Vec<[u8; 32]> = log.get("topics")
+                        .and_then(|t| t.as_array())
+                        .map(|arr| arr.iter()
+                            .filter_map(|v| v.as_str())
+                            .filter_map(|s| hex::decode(s.trim_start_matches("0x")).ok())
+                            .filter_map(|bytes| bytes.try_into().ok())
+                            .collect())
+                        .unwrap_or_default();
 
-                        let data = log.get("data")
-                            .and_then(|d| d.as_str())
-                            .map(|s| hex::decode(s.trim_start_matches("0x")))
-                            .transpose()
-                            .map_err(|e| format!("Failed to decode log data: {}", e))?
-                            .unwrap_or_default();
+                    let data = log.get("data")
+                        .and_then(|d| d.as_str())
+                        .map(|s| hex::decode(s.trim_start_matches("0x")))
+                        .transpose()
+                        .map_err(|e| format!("Failed to decode log data: {}", e))?
+                        .unwrap_or_default();
 
-                        match ExploitAttempt::decode_raw_log(topics, &data, true) {
-                            Ok(event) => {
-                                println!("Decoded event: {:?}", event);
-                                let log_data = serde_json::json!({
-                                    "bot_address": format!("0x{}", hex::encode(event.bot.as_slice())),
-                                    "action": event.action,
-                                    "timestamp": Utc::now().timestamp(),
-                                    "amount": event.amount.to_string(),
-                                    "success": event.success
-                                });
+                    match ExploitAttempt::decode_raw_log(topics, &data, true) {
+                        Ok(event) => {
+                            println!("Decoded event: {:?}", event);
+                            let log_data = serde_json::json!({
+                                "bot_address": format!("0x{}", hex::encode(event.bot.as_slice())),
+                                "action": event.action,
+                                "timestamp": Utc::now().timestamp(),
+                                "amount": event.amount.to_string(),
+                                "success": event.success
+                            });
 
-                                if let Err(e) = append_log(&log_data.to_string(), CURRENT_LOG_FILE) {
-                                    println!("Failed to append log: {}", e);
-                                } else {
-                                    println!("Log data appended successfully");
-                                    log_count += 1;
+                            if let Err(e) = append_log(&log_data.to_string(), CURRENT_LOG_FILE) {
+                                println!("Failed to append log: {}", e);
+                            } else {
+                                println!("Log data appended successfully");
+                                log_count += 1;
 
-                                    if log_count >= LOG_THRESHOLD {
-                                        if let Err(e) = archive_logs() {
-                                            println!("Failed to archive logs: {}", e);
-                                        } else {
-                                            log_count = 0;
-                                        }
+                                if log_count >= LOG_THRESHOLD {
+                                    if let Err(e) = archive_logs() {
+                                        println!("Failed to archive logs: {}", e);
+                                    } else {
+                                        log_count = 0;
                                     }
                                 }
-                            },
-                            Err(e) => {
-                                println!("Failed to decode log data: {}", e);
-                                continue;
                             }
+                        },
+                        Err(e) => {
+                            println!("Failed to decode log data: {}", e);
+                            continue;
                         }
                     }
                 }
-            },
-            Err(e) => {
-                println!("Failed to fetch logs: {}", e);
             }
+        },
+        Err(e) => {
+            println!("Failed to fetch logs: {}", e);
         }
-
-        println!("Sleeping for 10 seconds...");
-        sleep(Duration::from_secs(10)).await;
     }
+
+    Ok(())
 }
 
 async fn get_logs(eth_node: &str, honeypot_address: &Address) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
