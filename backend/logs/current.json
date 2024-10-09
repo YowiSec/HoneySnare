@@ -1,2 +1,3 @@
 {"action":"transferOwnership","amount":"0","bot_address":"0x81ddfd70e6d18171bc5985e0625976cf3200cb01","success":false,"timestamp":1728468221}
 {"action":"transferOwnership","amount":"0","bot_address":"0x81ddfd70e6d18171bc5985e0625976cf3200cb01","success":false,"timestamp":1728468221}
+{"action":"reentrancyExploit","amount":"1000","bot_address":"0x81ddfd70e6d18171bc5985e0625976cf3200cb01","success":true,"timestamp":1728469477}
