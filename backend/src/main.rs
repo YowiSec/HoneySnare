@@ -17,7 +17,9 @@ use chrono::Utc;
 const LOG_DIR: &str = "logs";
 const CURRENT_LOG_FILE: &str = "logs/current.json";
 const ARCHIVE_DIR: &str = "logs/archive";
-const LOG_THRESHOLD: usize = 3; // Set a low threshold for demonstration
+const LOG_THRESHOLD: usize = 3;
+const BLOCKS_TO_QUERY: u64 = 1000; // Query the last 1000 blocks
+const LAST_PROCESSED_BLOCK_FILE: &str = "logs/last_processed_block.json";
 
 sol! {
     #[derive(Debug)]
@@ -32,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let eth_node = env::var("ARB_RPC_URL").expect("ARB_RPC_URL not set");
     println!("Connecting to Arbitrum node: {}", eth_node);
 
-    let honeypot_address = match hex::decode("0x6d22de3D3C70F67C323F15975De19b53b7a73Dac") {
+    let honeypot_address = match hex::decode("6d22de3D3C70F67C323F15975De19b53b7a73Dac") {
         Ok(bytes) => {
             if bytes.len() != 20 {
                 println!("Invalid Arbitrum address length: {}", bytes.len());
@@ -48,7 +50,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Monitoring Honeypot Address: 0x{}", hex::encode(honeypot_address.as_slice()));
 
-    // Create necessary directories
     fs::create_dir_all(LOG_DIR)?;
     fs::create_dir_all(ARCHIVE_DIR)?;
 
@@ -123,12 +124,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn get_logs(eth_node: &str, honeypot_address: &Address) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
     let client = Client::new();
+
+    // Get the latest block number
+    let latest_block: u64 = client
+        .post(eth_node)
+        .json(&serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "eth_blockNumber",
+            "params": [],
+            "id": 1
+        }))
+        .send()
+        .await?
+        .json::<serde_json::Value>()
+        .await?
+        ["result"]
+        .as_str()
+        .unwrap()
+        .trim_start_matches("0x")
+        .parse()?;
+
+    // Read the last processed block
+    let from_block = if let Ok(contents) = fs::read_to_string(LAST_PROCESSED_BLOCK_FILE) {
+        serde_json::from_str::<u64>(&contents).unwrap_or(latest_block.saturating_sub(BLOCKS_TO_QUERY))
+    } else {
+        latest_block.saturating_sub(BLOCKS_TO_QUERY)
+    };
+
     let payload = serde_json::json!({
         "jsonrpc": "2.0",
         "method": "eth_getLogs",
         "params": [{
             "address": format!("0x{}", hex::encode(honeypot_address.as_slice())),
-            "fromBlock": "latest",
+            "fromBlock": format!("0x{:x}", from_block),
+            "toBlock": "latest",
             "topics": []
         }],
         "id": 1
@@ -149,15 +178,22 @@ async fn get_logs(eth_node: &str, honeypot_address: &Address) -> Result<Vec<Valu
     let response_body: serde_json::Value = response.json().await?;
     println!("Received response: {:?}", response_body);
     
-    if let Some(result) = response_body.get("result") {
+    let result = if let Some(result) = response_body.get("result") {
         if result.is_array() {
-            return Ok(result.as_array().unwrap().to_vec());
+            result.as_array().unwrap().to_vec()
         } else if result.is_null() {
-            return Ok(Vec::new());
+            Vec::new()
+        } else {
+            return Err("Unexpected response format from Ethereum node".into());
         }
-    }
+    } else {
+        return Err("Unexpected response format from Ethereum node".into());
+    };
 
-    Err("Unexpected response format from Ethereum node".into())
+    // After successfully processing logs, update the last processed block
+    fs::write(LAST_PROCESSED_BLOCK_FILE, latest_block.to_string())?;
+
+    Ok(result)
 }
 
 fn append_log(log_data: &str, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
