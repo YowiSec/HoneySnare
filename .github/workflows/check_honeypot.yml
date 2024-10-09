@@ -8,13 +8,16 @@ on:
 jobs:
   check-honeypot:
     runs-on: ubuntu-latest
+    environment: ARB_RPC_URL  # Specify the environment here
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
+        profile: minimal
+        override: true
     
     - name: Build
       run: |
@@ -34,3 +37,5 @@ jobs:
         git config --global user.email 'action@github.com'
         git add backend/logs/
         git diff --quiet && git diff --staged --quiet || (git commit -m "Update logs" && git push)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
