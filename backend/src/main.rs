@@ -18,7 +18,7 @@ const LOG_DIR: &str = "logs";
 const CURRENT_LOG_FILE: &str = "logs/current.json";
 const ARCHIVE_DIR: &str = "logs/archive";
 const LOG_THRESHOLD: usize = 3;
-const BLOCKS_TO_QUERY: u64 = 1000; // Query the last 1000 blocks
+const BLOCKS_TO_QUERY: u64 = 350_000; // Query approximately one day's worth of blocks
 const LAST_PROCESSED_BLOCK_FILE: &str = "logs/last_processed_block.json";
 
 sol! {
