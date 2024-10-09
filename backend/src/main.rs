@@ -30,14 +30,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     dotenv().ok();
 
-    let eth_node = env::var("ETH_RPC_URL").expect("ETH_RPC_URL not set");
-    println!("Connecting to Ethereum node: {}", eth_node);
+    let eth_node = env::var("ARB_RPC_URL").expect("ARB_RPC_URL not set");
+    println!("Connecting to Arbitrum node: {}", eth_node);
 
-    let honeypot_address = match hex::decode("5FbDB2315678afecb367f032d93F642f64180aa3") {
+    let honeypot_address = match hex::decode("0x6d22de3D3C70F67C323F15975De19b53b7a73Dac") {
         Ok(bytes) => {
             if bytes.len() != 20 {
-                println!("Invalid Ethereum address length: {}", bytes.len());
-                return Err("Invalid Ethereum address length".into());
+                println!("Invalid Arbitrum address length: {}", bytes.len());
+                return Err("Invalid Arbitrum address length".into());
             }
             Address::from_slice(&bytes)
         },
