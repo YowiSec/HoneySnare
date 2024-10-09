@@ -13,4 +13,8 @@
 # TODO
 - [X] Deploy Honeypot.sol to Arbitrum.
 - [X] Update the backend crate's main.rs to use hardcoded deployed honeypot address.
-- [ ] Deploy the backend to fleek.
+- [X] Deploy the backend to fleek.
+
+# Site Deployment
+You can check out the fleek url for the latest logs here: https://brief-sandwich-sparse.on-fleek.app/
+Alternatively, you can also check the logs folder in the backend crate.
