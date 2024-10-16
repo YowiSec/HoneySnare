@@ -1,6 +1,8 @@
 # HoneySnare
 
-![Logo](HoneySnareLogo.png)
+<p align="center">
+  <img src="HoneySnareLogo.png" alt="Logo" width="200">
+</p>
 
 **HoneySnare** is a smart contract honeypot designed to attract and analyze malicious bot interactions on Ethereum and EVM-compatible Layer 2 networks (such as Arbitrum, Optimism, and Base). The project includes a Rust backend that monitors, logs, and archives bot behavior on a daily basis, providing valuable data for further analysis.
 
@@ -38,4 +40,3 @@ Alternatively, you can check the logs folder in the backend crate for local acce
 - Monitor the Fleek-hosted site for daily log updates
 - Analyze the archived logs for insights into bot behavior
 - Use the GitHub Actions workflow for automated daily checks and log updates
-
