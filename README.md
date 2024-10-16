@@ -1,7 +1,6 @@
-# HoneySnare
-
 <p align="center">
-  <img src="HoneySnareLogo.png" alt="Logo" width="200">
+  <h1>HoneySnare</h1>
+  <img src="HoneySnareLogo.png" alt="Logo" width="300">
 </p>
 
 **HoneySnare** is a smart contract honeypot designed to attract and analyze malicious bot interactions on Ethereum and EVM-compatible Layer 2 networks (such as Arbitrum, Optimism, and Base). The project includes a Rust backend that monitors, logs, and archives bot behavior on a daily basis, providing valuable data for further analysis.
