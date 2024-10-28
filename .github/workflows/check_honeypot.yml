@@ -1,20 +1,20 @@
-name: Check Honeypot and Process Logs
+name: Monitor Honeypot Interactions
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs at 00:00 UTC every day
-  workflow_dispatch:  # Allows manual triggering
+    - cron: '0 0 * * *'  # Daily check
+  workflow_dispatch:      # Manual trigger
   
 jobs:
-  check-honeypot:
+  monitor-honeypot:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # This line gives the job permission to write to the repository
-    environment: ARB_RPC_URL  # Specify the environment here
+      contents: write
+    environment: production
     steps:
     - uses: actions/checkout@v3
       with:
-        fetch-depth: 0  # Fetch all history for all branches and tags
+        fetch-depth: 0
     
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
@@ -23,21 +23,34 @@ jobs:
         profile: minimal
         override: true
     
-    - name: Build
+    - name: Cache Rust dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          backend/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    
+    - name: Build monitor
       run: |
         cd backend
         cargo build --release
       
-    - name: Run backend
+    - name: Run monitor
       env:
         ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
+        OP_RPC_URL: ${{ secrets.OP_RPC_URL }}
+        BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+        BLAST_RPC_URL: ${{ secrets.BLAST_RPC_URL }}
       run: |
         cd backend
         ./target/release/backend
+      timeout-minutes: 10
     
-    - name: Commit and push if changes
+    - name: Commit new logs
       run: |
         git config --global user.name 'GitHub Action'
         git config --global user.email 'action@github.com'
         git add backend/logs/
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update logs" && git push)
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update honeypot interaction logs" && git push)

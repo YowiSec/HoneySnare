@@ -1,250 +1,50 @@
-use alloy_sol_types::sol;
-use alloy_primitives::Address;
-use alloy_sol_types::SolEvent;
 use dotenv::dotenv;
-use reqwest::Client;
-use std::env;
-use std::fs::{self, File, OpenOptions};
-use std::path::Path;
-use flate2::write::GzEncoder;
-use flate2::Compression;
-use std::io::{Write, Read};
-use hex;
-use serde_json::Value;
-use log::{info, warn, error, debug};
-use chrono::Utc;
-
-const LOG_DIR: &str = "logs";
-const CURRENT_LOG_FILE: &str = "logs/current.json";
-const ARCHIVE_DIR: &str = "logs/archive";
-const LOG_THRESHOLD: usize = 3;
-const BLOCKS_TO_QUERY: u64 = 350_000; // Query approximately one day's worth of blocks
-const LAST_PROCESSED_BLOCK_FILE: &str = "logs/last_processed_block.json";
-
-sol! {
-    #[derive(Debug)]
-    event ExploitAttempt(address indexed bot, string action, uint256 amount, bool success);
-}
+use std::error::Error;
+use tokio;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
+async fn main() -> Result<(), Box<dyn Error>> {
+    // Load environment variables
     dotenv().ok();
 
-    let eth_node = env::var("ARB_RPC_URL").expect("ARB_RPC_URL not set");
-    println!("Connecting to Arbitrum node: {}", eth_node);
+    // Verify all required environment variables are set
+    if let Err(e) = backend::verify_environment() {
+        eprintln!("Environment setup error: {}", e);
+        std::process::exit(1);
+    }
 
-    let honeypot_address = match hex::decode("6d22de3D3C70F67C323F15975De19b53b7a73Dac") {
-        Ok(bytes) => {
-            if bytes.len() != 20 {
-                println!("Invalid Arbitrum address length: {}", bytes.len());
-                return Err("Invalid Arbitrum address length".into());
-            }
-            Address::from_slice(&bytes)
-        },
-        Err(e) => {
-            println!("Failed to decode honeypot address: {}", e);
-            return Err("Failed to decode honeypot address".into());
+    let configs = backend::load_chain_configs()?;
+
+    println!("Starting HoneySnare log monitor...");
+    println!("Monitoring chains:");
+    for config in &configs {
+        if config.enabled {
+            let status = match &config.honeypot_address {
+                Some(addr) => format!("configured with address {}", addr),
+                None => "waiting for deployment".to_string(),
+            };
+            println!("- {} ({}) using {}", config.chain, status, config.rpc_url_env);
         }
-    };
+    }
 
-    println!("Monitoring Honeypot Address: 0x{}", hex::encode(honeypot_address.as_slice()));
+    loop {
+        for config in &configs {
+            if !config.enabled {
+                continue;
+            }
 
-    fs::create_dir_all(LOG_DIR)?;
-    fs::create_dir_all(ARCHIVE_DIR)?;
-
-    let mut log_count = 0;
-
-    println!("Fetching logs...");
-    match get_logs(&eth_node, &honeypot_address).await {
-        Ok(logs) => {
-            if logs.is_empty() {
-                println!("No new logs found");
-            } else {
-                println!("Found {} new log(s)", logs.len());
-                for log in logs {
-                    println!("Processing log: {:?}", log);
-                    let topics: Vec<[u8; 32]> = log.get("topics")
-                        .and_then(|t| t.as_array())
-                        .map(|arr| arr.iter()
-                            .filter_map(|v| v.as_str())
-                            .filter_map(|s| hex::decode(s.trim_start_matches("0x")).ok())
-                            .filter_map(|bytes| bytes.try_into().ok())
-                            .collect())
-                        .unwrap_or_default();
-
-                    let data = log.get("data")
-                        .and_then(|d| d.as_str())
-                        .map(|s| hex::decode(s.trim_start_matches("0x")))
-                        .transpose()
-                        .map_err(|e| format!("Failed to decode log data: {}", e))?
-                        .unwrap_or_default();
-
-                    match ExploitAttempt::decode_raw_log(topics, &data, true) {
-                        Ok(event) => {
-                            println!("Decoded event: {:?}", event);
-                            let log_data = serde_json::json!({
-                                "bot_address": format!("0x{}", hex::encode(event.bot.as_slice())),
-                                "action": event.action,
-                                "timestamp": Utc::now().timestamp(),
-                                "amount": event.amount.to_string(),
-                                "success": event.success
-                            });
-
-                            if let Err(e) = append_log(&log_data.to_string(), CURRENT_LOG_FILE) {
-                                println!("Failed to append log: {}", e);
-                            } else {
-                                println!("Log data appended successfully");
-                                log_count += 1;
-
-                                if log_count >= LOG_THRESHOLD {
-                                    if let Err(e) = archive_logs() {
-                                        println!("Failed to archive logs: {}", e);
-                                    } else {
-                                        log_count = 0;
-                                    }
-                                }
-                            }
-                        },
-                        Err(e) => {
-                            println!("Failed to decode log data: {}", e);
-                            continue;
+            match backend::fetch_chain_logs(config).await {
+                Ok(logs) => {
+                    for log in logs {
+                        if let Err(e) = backend::write_log(&log) {
+                            eprintln!("Error writing log from {}: {}", config.chain, e);
                         }
                     }
                 }
+                Err(e) => eprintln!("Error fetching logs from {}: {}", config.chain, e),
             }
-        },
-        Err(e) => {
-            println!("Failed to fetch logs: {}", e);
         }
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await;
     }
-
-    Ok(())
-}
-
-async fn get_logs(eth_node: &str, honeypot_address: &Address) -> Result<Vec<Value>, Box<dyn std::error::Error>> {
-    let client = Client::new();
-
-    // Get the latest block number
-    let block_number_response = client
-        .post(eth_node)
-        .json(&serde_json::json!({
-            "jsonrpc": "2.0",
-            "method": "eth_blockNumber",
-            "params": [],
-            "id": 1
-        }))
-        .send()
-        .await?
-        .json::<serde_json::Value>()
-        .await?;
-
-    println!("Block number response: {:?}", block_number_response);
-
-    let latest_block: u64 = match block_number_response.get("result") {
-        Some(Value::String(hex_string)) => {
-            println!("Parsing block number: {}", hex_string);
-            u64::from_str_radix(hex_string.trim_start_matches("0x"), 16)
-                .map_err(|e| format!("Failed to parse block number: {}", e))?
-        },
-        _ => return Err("Unexpected response format for block number".into()),
-    };
-
-    println!("Latest block: {}", latest_block);
-
-    // Read the last processed block
-    let from_block = if let Ok(contents) = fs::read_to_string(LAST_PROCESSED_BLOCK_FILE) {
-        println!("Last processed block file contents: {}", contents);
-        contents.trim().parse::<u64>()
-            .unwrap_or_else(|_| latest_block.saturating_sub(BLOCKS_TO_QUERY))
-    } else {
-        latest_block.saturating_sub(BLOCKS_TO_QUERY)
-    };
-
-    println!("Querying from block: {}", from_block);
-
-    let payload = serde_json::json!({
-        "jsonrpc": "2.0",
-        "method": "eth_getLogs",
-        "params": [{
-            "address": format!("0x{}", hex::encode(honeypot_address.as_slice())),
-            "fromBlock": format!("0x{:x}", from_block),
-            "toBlock": "latest",
-            "topics": []
-        }],
-        "id": 1
-    });
-
-    println!("Sending request to Ethereum node: {:?}", payload);
-
-    let response = client
-        .post(eth_node)
-        .json(&payload)
-        .send()
-        .await?;
-
-    if !response.status().is_success() {
-        return Err(format!("Non-success status code: {}", response.status()).into());
-    }
-
-    let response_body: serde_json::Value = response.json().await?;
-    println!("Received response: {:?}", response_body);
-    
-    let result = if let Some(result) = response_body.get("result") {
-        if result.is_array() {
-            result.as_array().unwrap().to_vec()
-        } else if result.is_null() {
-            Vec::new()
-        } else {
-            return Err("Unexpected response format from Ethereum node".into());
-        }
-    } else {
-        return Err("Unexpected response format from Ethereum node".into());
-    };
-
-    // After successfully processing logs, update the last processed block
-    fs::write(LAST_PROCESSED_BLOCK_FILE, latest_block.to_string())?;
-
-    Ok(result)
-}
-
-fn append_log(log_data: &str, file_path: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let path = Path::new(file_path);
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(file_path)?;
-    
-    writeln!(file, "{}", log_data)?;
-    Ok(())
-}
-
-fn archive_logs() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Archiving logs...");
-    let timestamp = Utc::now().format("%Y%m%d%H%M%S").to_string();
-    let archive_filename = format!("{}/logs_{}.gz", ARCHIVE_DIR, timestamp);
-
-    // Read current logs
-    let mut current_logs = String::new();
-    File::open(CURRENT_LOG_FILE)?.read_to_string(&mut current_logs)?;
-
-    // Compress current logs
-    let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(current_logs.as_bytes())?;
-    let compressed_logs = encoder.finish()?;
-
-    // Write compressed logs to archive file
-    fs::write(&archive_filename, compressed_logs)?;
-
-    println!("Logs archived to: {}", archive_filename);
-
-    // Clear current log file
-    fs::write(CURRENT_LOG_FILE, "")?;
-
-    println!("Current log file cleared");
-    Ok(())
 }

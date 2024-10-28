@@ -3,17 +3,354 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HoneySnare Logs</title>
+    <title>HoneySnare Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-dark: #1a1b26;
+            --secondary-dark: #24283b;
+            --text-primary: #a9b1d6;
+            --text-secondary: #787c99;
+            --accent-color: #7aa2f7;
+            --danger-color: #f7768e;
+            --success-color: #9ece6a;
+            --warning-color: #e0af68;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background-color: var(--primary-dark);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background-color: var(--secondary-dark);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .stat-box {
+            background-color: var(--primary-dark);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-box span {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-box strong {
+            font-size: 1.1rem;
+            color: var(--accent-color);
+            margin-left: 0.5rem;
+        }
+
+        .chain-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .chain-section {
+            background-color: var(--secondary-dark);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .chain-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(169, 177, 214, 0.1);
+        }
+
+        .chain-header h2 {
+            font-size: 1.4rem;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chain-header span {
+            background-color: var(--primary-dark);
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+
+        .log-entry {
+            background-color: var(--primary-dark);
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent-color);
+            transition: transform 0.2s ease;
+        }
+
+        .log-entry:hover {
+            transform: translateX(4px);
+        }
+
+        .log-entry.suspicious {
+            border-left-color: var(--danger-color);
+        }
+
+        .log-entry strong {
+            color: var(--text-secondary);
+            min-width: 80px;
+            display: inline-block;
+        }
+
+        .tx-hash {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .tx-hash:hover {
+            text-decoration: underline;
+        }
+
+        .timestamp {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .chain-icon {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+        }
+
+        .amount {
+            color: var(--success-color);
+            font-family: monospace;
+        }
+
+        .refresh-button {
+            background-color: var(--accent-color);
+            color: var(--primary-dark);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: opacity 0.2s ease;
+        }
+
+        .refresh-button:hover {
+            opacity: 0.9;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .rotating {
+            animation: rotate 1s linear infinite;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--primary-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .header-stats {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .chain-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>HoneySnare Logs</h1>
-    <pre id="logs"></pre>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <i class="fas fa-spider"></i>
+                HoneySnare Dashboard
+            </h1>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <span>Total Attempts</span>
+                    <strong id="total-attempts">0</strong>
+                </div>
+                <div class="stat-box">
+                    <span>Active Chains</span>
+                    <strong id="active-chains">0</strong>
+                </div>
+                <button class="refresh-button" onclick="refreshLogs()">
+                    <i class="fas fa-sync-alt" id="refresh-icon"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+        
+        <div id="chain-logs" class="chain-grid"></div>
+    </div>
+    
     <script>
-        fetch('current.json')
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('logs').textContent = data;
-            });
+        const chainIcons = {
+            'arbitrum': '<i class="fas fa-link" style="color: #12AAFF;"></i>',
+            'optimism': '<i class="fas fa-link" style="color: #FF0420;"></i>',
+            'base': '<i class="fas fa-link" style="color: #0052FF;"></i>',
+            'solana': '<i class="fas fa-link" style="color: #14F195;"></i>'
+        };
+
+        async function fetchLogs() {
+            try {
+                const response = await fetch('current.json');
+                const data = await response.text();
+                const logs = data.split('\n')
+                    .filter(line => line.trim())
+                    .map(JSON.parse)
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                // Group logs by chain
+                const chainGroups = {};
+                logs.forEach(log => {
+                    if (!chainGroups[log.chain]) {
+                        chainGroups[log.chain] = [];
+                    }
+                    chainGroups[log.chain].push(log);
+                });
+
+                // Update stats
+                document.getElementById('total-attempts').textContent = logs.length;
+                document.getElementById('active-chains').textContent = Object.keys(chainGroups).length;
+
+                // Display logs by chain
+                const container = document.getElementById('chain-logs');
+                container.innerHTML = '';
+                
+                Object.entries(chainGroups).forEach(([chain, chainLogs]) => {
+                    const section = document.createElement('div');
+                    section.className = 'chain-section';
+                    
+                    const header = document.createElement('div');
+                    header.className = 'chain-header';
+                    header.innerHTML = `
+                        <h2>${chainIcons[chain.toLowerCase()] || '<i class="fas fa-link"></i>'} ${chain}</h2>
+                        <span>${chainLogs.length} attempts</span>
+                    `;
+                    
+                    const logsList = document.createElement('div');
+                    chainLogs.forEach(log => {
+                        const entry = document.createElement('div');
+                        entry.className = `log-entry ${log.likely_exploit ? 'suspicious' : ''}`;
+                        entry.innerHTML = `
+                            <div><strong>Chain:</strong> <span class="chain-name">${chain}</span></div>
+                            <div><strong>Attacker:</strong> ${log.attacker}</div>
+                            <div><strong>Action:</strong> ${log.action}</div>
+                            <div><strong>Amount:</strong> <span class="amount">${log.amount}</span></div>
+                            <div><strong>Time:</strong> <span class="timestamp">${new Date(log.timestamp).toLocaleString()}</span></div>
+                            <div><strong>TX:</strong> <a href="#" class="tx-hash" onclick="viewTransaction('${chain}', '${log.transaction_hash}')">${log.transaction_hash.slice(0, 10)}...</a></div>
+                        `;                        
+                        logsList.appendChild(entry);
+                    });
+                    
+                    section.appendChild(header);
+                    section.appendChild(logsList);
+                    container.appendChild(section);
+                });
+            } catch (error) {
+                console.error('Error fetching logs:', error);
+            }
+        }
+
+        async function refreshLogs() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('rotating');
+            await fetchLogs();
+            icon.classList.remove('rotating');
+        }
+
+        function viewTransaction(chain, txHash) {
+            const explorers = {
+                'arbitrum': 'https://arbiscan.io/tx/',
+                'optimism': 'https://optimistic.etherscan.io/tx/',
+                'base': 'https://basescan.org/tx/',
+                'blast': 'https://blastscan.io/tx/',  // Add Blast explorer
+                'solana': 'https://explorer.solana.com/tx/'
+            };            
+            if (explorers[chain.toLowerCase()]) {
+                window.open(explorers[chain.toLowerCase()] + txHash, '_blank');
+            }
+        }
+
+        // Initial fetch and refresh every minute
+        fetchLogs();
+        setInterval(fetchLogs, 60000);
     </script>
 </body>
 </html>
