@@ -203,18 +203,16 @@ pub fn load_chain_configs() -> Result<Vec<ChainConfig>, Box<dyn Error>> {
 }
 
 pub fn verify_environment() -> Result<(), Box<dyn Error>> {
-    let required_vars = [
-        ("ARB_RPC_URL", "Arbitrum"),
-        ("OP_RPC_URL", "Optimism"),
-        ("BASE_RPC_URL", "Base"),
-        ("BLAST_RPC_URL", "Blast"),
-        ("SOL_RPC_URL", "Solana"),
-    ];
-
+    // First get active chains
+    let configs = load_chain_configs()?;
+    
+    // Only check RPC URLs for enabled chains
     let mut missing = Vec::new();
-    for (var, chain) in required_vars {
-        if std::env::var(var).is_err() {
-            missing.push((var, chain));
+    for config in configs {
+        if config.enabled {
+            if std::env::var(&config.rpc_url_env).is_err() {
+                missing.push((&config.rpc_url_env, &config.chain));
+            }
         }
     }
 
