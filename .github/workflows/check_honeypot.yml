@@ -2,8 +2,8 @@ name: Monitor Honeypot Interactions
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Daily check
-  workflow_dispatch:      # Manual trigger
+    - cron: '0 0 * * *'  # Daily check at midnight UTC
+  workflow_dispatch:      # Manual trigger option
   
 jobs:
   monitor-honeypot:
@@ -23,34 +23,17 @@ jobs:
         profile: minimal
         override: true
     
-    - name: Cache Rust dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          backend/target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Build monitor
+    - name: Build and Run
+      env:
+        ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
       run: |
         cd backend
         cargo build --release
-      
-    - name: Run monitor
-      env:
-        ARB_RPC_URL: ${{ secrets.ARB_RPC_URL }}
-        OP_RPC_URL: ${{ secrets.OP_RPC_URL }}
-        BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
-        BLAST_RPC_URL: ${{ secrets.BLAST_RPC_URL }}
-      run: |
-        cd backend
         ./target/release/backend
-      timeout-minutes: 10
     
-    - name: Commit new logs
+    - name: Commit and push if changes
       run: |
         git config --global user.name 'GitHub Action'
         git config --global user.email 'action@github.com'
         git add backend/logs/
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update honeypot interaction logs" && git push)
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update logs" && git push)
