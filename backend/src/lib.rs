@@ -177,19 +177,19 @@ pub fn load_chain_configs() -> Result<Vec<ChainConfig>, Box<dyn Error>> {
             chain: "optimism".to_string(),
             rpc_url_env: "OP_RPC_URL".to_string(),
             honeypot_address: None,
-            enabled: true,
+            enabled: false,
         },
         ChainConfig {
             chain: "base".to_string(),
             rpc_url_env: "BASE_RPC_URL".to_string(),
             honeypot_address: None,
-            enabled: true,
+            enabled: false,
         },
         ChainConfig {
             chain: "blast".to_string(),
             rpc_url_env: "BLAST_RPC_URL".to_string(),
             honeypot_address: None,
-            enabled: true,
+            enabled: false,
         },
         ChainConfig {
             chain: "solana".to_string(),
