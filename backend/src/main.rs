@@ -1,3 +1,7 @@
+use std::error::Error;
+use dotenv::dotenv;
+use backend;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
