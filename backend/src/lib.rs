@@ -207,14 +207,12 @@ pub fn verify_environment() -> Result<(), Box<dyn Error>> {
     let configs = load_chain_configs()?;
     
     // Only check RPC URLs for enabled chains
-    let mut missing = Vec::new();
-    for config in configs {
-        if config.enabled {
-            if std::env::var(&config.rpc_url_env).is_err() {
-                missing.push((&config.rpc_url_env, &config.chain));
-            }
-        }
-    }
+    let missing: Vec<(String, String)> = configs
+        .iter()
+        .filter(|config| config.enabled)
+        .filter(|config| std::env::var(&config.rpc_url_env).is_err())
+        .map(|config| (config.rpc_url_env.clone(), config.chain.clone()))
+        .collect();
 
     if !missing.is_empty() {
         let error_msg = missing
