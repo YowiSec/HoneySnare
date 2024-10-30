@@ -1,6 +1,3 @@
-{"action":"transferOwnership","amount":"0","bot_address":"0x81ddfd70e6d18171bc5985e0625976cf3200cb01","success":false,"timestamp":1728468221}
-{"action":"transferOwnership","amount":"0","bot_address":"0x81ddfd70e6d18171bc5985e0625976cf3200cb01","success":false,"timestamp":1728468221}
-{"action":"reentrancyExploit","amount":"1000","bot_address":"0x81ddfd70e6d18171bc5985e0625976cf3200cb01","success":true,"timestamp":1728469477}
 {"chain":"arbitrum","attacker":"0x0000000000000000000000000000000000000000000000000000000000000000","action":"interaction","amount":"0x","timestamp":1730262482,"tx_hash":"0xd229d552b0e11c1c624afc420fc03473ba2f9f24944d189bf530a7af9036108a"}
 {"chain":"arbitrum","attacker":"0x00000000000000000000000081ddfd70e6d18171bc5985e0625976cf3200cb01","action":"interaction","amount":"0x000000000000000000000000000000000000000000000000000009184e72a000","timestamp":1730262482,"tx_hash":"0x2fce40f926b816b31959f0b3797efb1f83d98b7c0185aac4fd57223091ea4ffa"}
 {"chain":"arbitrum","attacker":"unknown","action":"interaction","amount":"0x0000000000000000000000000000000000000000000000056bc76745b182a000","timestamp":1730262482,"tx_hash":"0x2fce40f926b816b31959f0b3797efb1f83d98b7c0185aac4fd57223091ea4ffa"}
