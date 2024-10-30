@@ -15,6 +15,7 @@
             --danger-color: #f7768e;
             --success-color: #9ece6a;
             --warning-color: #e0af68;
+            --hover-color: #2f3549;
         }
 
         * {
@@ -41,7 +42,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
-            padding: 1rem;
+            padding: 1.5rem;
             background-color: var(--secondary-dark);
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -78,30 +79,25 @@
             margin-left: 0.5rem;
         }
 
-        .chain-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .chain-section {
+        .logs-container {
             background-color: var(--secondary-dark);
             border-radius: 12px;
             padding: 1.5rem;
+            margin-top: 2rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
-        .chain-header {
+        .logs-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
             padding-bottom: 1rem;
+            margin-bottom: 1rem;
             border-bottom: 1px solid rgba(169, 177, 214, 0.1);
         }
 
-        .chain-header h2 {
+        .logs-header h2 {
             font-size: 1.4rem;
             color: var(--accent-color);
             display: flex;
@@ -109,61 +105,53 @@
             gap: 0.5rem;
         }
 
-        .chain-header span {
-            background-color: var(--primary-dark);
-            padding: 0.3rem 0.8rem;
-            border-radius: 20px;
-            font-size: 0.9rem;
+        .logs-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 0.5rem;
         }
 
-        .log-entry {
-            background-color: var(--primary-dark);
-            margin: 1rem 0;
+        .logs-table th {
+            text-align: left;
             padding: 1rem;
-            border-radius: 8px;
-            border-left: 4px solid var(--accent-color);
+            color: var(--text-secondary);
+            font-weight: 500;
+            background-color: var(--primary-dark);
+        }
+
+        .logs-table tr {
             transition: transform 0.2s ease;
         }
 
-        .log-entry:hover {
+        .logs-table tr:hover {
             transform: translateX(4px);
         }
 
-        .log-entry.suspicious {
-            border-left-color: var(--danger-color);
+        .logs-table td {
+            padding: 1rem;
+            background-color: var(--primary-dark);
         }
 
-        .log-entry strong {
-            color: var(--text-secondary);
-            min-width: 80px;
-            display: inline-block;
+        .logs-table tr td:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+
+        .logs-table tr td:last-child {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
         }
 
         .tx-hash {
             color: var(--accent-color);
             text-decoration: none;
             font-family: monospace;
-            font-size: 0.9rem;
+            transition: color 0.2s ease;
         }
 
         .tx-hash:hover {
+            color: var(--warning-color);
             text-decoration: underline;
-        }
-
-        .timestamp {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-        }
-
-        .chain-icon {
-            width: 24px;
-            height: 24px;
-            vertical-align: middle;
-        }
-
-        .amount {
-            color: var(--success-color);
-            font-family: monospace;
         }
 
         .refresh-button {
@@ -193,23 +181,14 @@
             animation: rotate 1s linear infinite;
         }
 
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        .amount {
+            color: var(--success-color);
+            font-family: monospace;
         }
 
-        ::-webkit-scrollbar-track {
-            background: var(--primary-dark);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--text-secondary);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-color);
+        .timestamp {
+            color: var(--text-secondary);
+            font-family: monospace;
         }
 
         @media (max-width: 768px) {
@@ -227,8 +206,9 @@
                 justify-content: center;
             }
 
-            .chain-grid {
-                grid-template-columns: 1fr;
+            .logs-table {
+                display: block;
+                overflow-x: auto;
             }
         }
     </style>
@@ -249,106 +229,72 @@
                     <span>Active Chains</span>
                     <strong id="active-chains">0</strong>
                 </div>
-                <button class="refresh-button" onclick="refreshLogs()">
+                <button class="refresh-button" onclick="fetchLogs()">
                     <i class="fas fa-sync-alt" id="refresh-icon"></i>
                     Refresh
                 </button>
             </div>
         </div>
-        
-        <div id="chain-logs" class="chain-grid"></div>
-    </div>
-    
-    <script>
-        const chainIcons = {
-            'arbitrum': '<i class="fas fa-link" style="color: #12AAFF;"></i>',
-            'optimism': '<i class="fas fa-link" style="color: #FF0420;"></i>',
-            'base': '<i class="fas fa-link" style="color: #0052FF;"></i>',
-            'solana': '<i class="fas fa-link" style="color: #14F195;"></i>'
-        };
 
+        <div class="logs-container">
+            <div class="logs-header">
+                <h2>
+                    <i class="fas fa-link" style="color: #12AAFF;"></i>
+                    Arbitrum Interactions
+                </h2>
+                <span id="chain-attempts"></span>
+            </div>
+            <table class="logs-table">
+                <thead>
+                    <tr>
+                        <th>Attacker</th>
+                        <th>Action</th>
+                        <th>Amount</th>
+                        <th>Time</th>
+                        <th>Transaction</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-body">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
         async function fetchLogs() {
             try {
                 const response = await fetch('current.json');
                 const data = await response.text();
                 const logs = data.split('\n')
                     .filter(line => line.trim())
-                    .map(JSON.parse)
-                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                
-                // Group logs by chain
-                const chainGroups = {};
-                logs.forEach(log => {
-                    if (!chainGroups[log.chain]) {
-                        chainGroups[log.chain] = [];
-                    }
-                    chainGroups[log.chain].push(log);
-                });
+                    .map(JSON.parse);
 
                 // Update stats
                 document.getElementById('total-attempts').textContent = logs.length;
-                document.getElementById('active-chains').textContent = Object.keys(chainGroups).length;
+                document.getElementById('active-chains').textContent = logs.length > 0 ? 1 : 0;
+                document.getElementById('chain-attempts').textContent = `${logs.length} attempts`;
 
-                // Display logs by chain
-                const container = document.getElementById('chain-logs');
-                container.innerHTML = '';
-                
-                Object.entries(chainGroups).forEach(([chain, chainLogs]) => {
-                    const section = document.createElement('div');
-                    section.className = 'chain-section';
-                    
-                    const header = document.createElement('div');
-                    header.className = 'chain-header';
-                    header.innerHTML = `
-                        <h2>${chainIcons[chain.toLowerCase()] || '<i class="fas fa-link"></i>'} ${chain}</h2>
-                        <span>${chainLogs.length} attempts</span>
+                // Update logs table
+                const tbody = document.getElementById('logs-body');
+                tbody.innerHTML = '';
+
+                logs.forEach(log => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${log.attacker}</td>
+                        <td>${log.action}</td>
+                        <td class="amount">${log.amount}</td>
+                        <td class="timestamp">${new Date(log.timestamp * 1000).toLocaleString()}</td>
+                        <td><a href="https://arbiscan.io/tx/${log.tx_hash}" target="_blank" class="tx-hash">${log.tx_hash.slice(0, 10)}...</a></td>
                     `;
-                    
-                    const logsList = document.createElement('div');
-                    chainLogs.forEach(log => {
-                        const entry = document.createElement('div');
-                        entry.className = `log-entry ${log.likely_exploit ? 'suspicious' : ''}`;
-                        entry.innerHTML = `
-                            <div><strong>Chain:</strong> <span class="chain-name">${chain}</span></div>
-                            <div><strong>Attacker:</strong> ${log.attacker}</div>
-                            <div><strong>Action:</strong> ${log.action}</div>
-                            <div><strong>Amount:</strong> <span class="amount">${log.amount}</span></div>
-                            <div><strong>Time:</strong> <span class="timestamp">${new Date(log.timestamp).toLocaleString()}</span></div>
-                            <div><strong>TX:</strong> <a href="#" class="tx-hash" onclick="viewTransaction('${chain}', '${log.transaction_hash}')">${log.transaction_hash.slice(0, 10)}...</a></div>
-                        `;                        
-                        logsList.appendChild(entry);
-                    });
-                    
-                    section.appendChild(header);
-                    section.appendChild(logsList);
-                    container.appendChild(section);
+                    tbody.appendChild(row);
                 });
             } catch (error) {
                 console.error('Error fetching logs:', error);
             }
         }
 
-        async function refreshLogs() {
-            const icon = document.getElementById('refresh-icon');
-            icon.classList.add('rotating');
-            await fetchLogs();
-            icon.classList.remove('rotating');
-        }
-
-        function viewTransaction(chain, txHash) {
-            const explorers = {
-                'arbitrum': 'https://arbiscan.io/tx/',
-                'optimism': 'https://optimistic.etherscan.io/tx/',
-                'base': 'https://basescan.org/tx/',
-                'blast': 'https://blastscan.io/tx/',  // Add Blast explorer
-                'solana': 'https://explorer.solana.com/tx/'
-            };            
-            if (explorers[chain.toLowerCase()]) {
-                window.open(explorers[chain.toLowerCase()] + txHash, '_blank');
-            }
-        }
-
-        // Initial fetch and refresh every minute
+        // Initial fetch and auto-refresh
         fetchLogs();
         setInterval(fetchLogs, 60000);
     </script>
